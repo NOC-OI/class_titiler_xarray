@@ -12,6 +12,7 @@ import s3fs
 import xarray
 from morecantile import TileMatrixSet
 from rasterio.crs import CRS
+from rasterio.warp import transform_bounds
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.io.xarray import XarrayReader
 from rio_tiler.types import BBox
@@ -160,12 +161,24 @@ def get_variable(
 ) -> xarray.DataArray:
     """Get Xarray variable as DataArray."""
     da = ds[variable]
+    # if drop_dim:
+        # dim_to_drop, dim_val = drop_dim.split("=")
+        # da = da.sel({dim_to_drop: dim_val}).drop(dim_to_drop)
+    da = da.sel(time_counter = '1960-01-06T12:00:00')
+    da = da.drop_vars('time_counter', errors='ignore')
+    da = da.assign_coords(y=ds.nav_lat[:,0].fillna(0).values, x=ds.nav_lon[0].values)
+    da = da.sortby('x')
+    da = da.sortby('y')
+    # print(da.x.values)
+    # import numpy as np
+    # da.rio.set_nodata(np.nan, inplace=True)
+    # da = da.fillna('-9999')
     da = arrange_coordinates(da)
-    # TODO: add test
-    if drop_dim:
-        dim_to_drop, dim_val = drop_dim.split("=")
-        da = da.sel({dim_to_drop: dim_val}).drop(dim_to_drop)
-    da = arrange_coordinates(da)
+    # # TODO: add test
+    # if drop_dim:
+    #     dim_to_drop, dim_val = drop_dim.split("=")
+    #     da = da.sel({dim_to_drop: dim_val}).drop(dim_to_drop)
+    # da = arrange_coordinates(da)
 
     # Make sure we have a valid CRS
     crs = da.rio.crs or "epsg:4326"
@@ -241,8 +254,22 @@ class ZarrReader(XarrayReader):
             drop_dim=self.drop_dim,
         )
 
-        self.bounds = tuple(self.input.rio.bounds())
+        # self.bounds = tuple(self.input.rio.bounds())
         self.crs = self.input.rio.crs
+        # minx, miny, maxx, maxy = zip(
+        #     [-179.5, -90, 179.5, 90], list(self.input.rio.bounds(recalc=True))
+        # )
+        # bounds = tuple([max(minx), max(miny), min(maxx), min(maxy)])
+        bounds = (-180, -90, 179.5, 90) # Example bounds, adjust as needed
+
+        transformed_bounds = transform_bounds("EPSG:4326",
+                                              self.input.rio.crs,
+                                              *bounds,
+                                              densify_pts=21)
+        # print(transformed_bounds)
+        self.input = self.input.rio.clip_box(*transformed_bounds)
+        self.bounds = self.input.rio.bounds()
+
 
         self._dims = [
             d

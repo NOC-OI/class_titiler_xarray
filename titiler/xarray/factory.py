@@ -214,9 +214,9 @@ class ZarrTilerFactory(BaseTilerFactory):
                 Optional[str],
                 Query(description="Dimension to drop"),
             ] = None,
-            datetime: Annotated[
-                Optional[str], Query(description="Slice of time to read (if available)")
-            ] = None,
+            # datetime: Annotated[
+            #     Optional[str], Query(description="Slice of time to read (if available)")
+            # ] = None,
             post_process=Depends(self.process_dependency),
             rescale=Depends(self.rescale_dependency),
             color_formula=Depends(ColorFormulaParams),
@@ -239,7 +239,7 @@ class ZarrTilerFactory(BaseTilerFactory):
                 reference=reference,
                 decode_times=decode_times,
                 drop_dim=drop_dim,
-                datetime=datetime,
+                # datetime=datetime,
                 tms=tms,
                 consolidated=consolidated,
             ) as src_dst:
