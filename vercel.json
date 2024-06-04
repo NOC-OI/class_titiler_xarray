@@ -1,19 +1,19 @@
 {
-  "devCommand": "uvicorn main:app --host 0.0.0.0 --port 3000",
+  "version": 2,
   "builds": [
-    {
+    { 
       "src": "titiler/xarray/main.py",
-      "use": "@vercel/python"
+      "use": "@vercel/static-build",
+      "config": { "distDir": "output" }
     }
   ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "titiler/xarray/main.py"
-    }
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
-  "env": {
-    "APP_MODULE": "titiler.xarray.main:app",
-    "PROJ_DIR": "/opt/homebrew/opt/proj" 
+  "functions": {
+    "api/[[path]]": {
+      "runtime": "custom",
+      "image": "docker.io/soutobias/titiler-xarray:latest"
+    }
   }
 }

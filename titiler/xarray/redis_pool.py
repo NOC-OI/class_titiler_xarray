@@ -26,7 +26,7 @@ class RedisCache:
 
 def get_redis():
     """Get a redis connection."""
-    if os.getenv("TEST_ENVIRONMENT"):
+    if not os.getenv("TEST_ENVIRONMENT"):
         server = fakeredis.FakeServer()
         # Use fakeredis in a test environment
         return fakeredis.FakeRedis(server=server)

@@ -14,5 +14,5 @@ COPY . /code/
 
 RUN pip install --upgrade pip
 RUN pip install -e . uvicorn
-# CMD ["uvicorn", "titiler.xarray.main:app", "--host", "0.0.0.0", "--port", "8081"]
 EXPOSE 8083
+CMD ["uvicorn", "titiler.xarray.main:app", "--host", "0.0.0.0", "--port", "8083"]
