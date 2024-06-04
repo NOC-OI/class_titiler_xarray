@@ -1,0 +1,10 @@
+version: "3.8.12"
+
+services:
+  web:
+    build: .
+    # command: bash -c "chmod u+x install.sh && ./install.sh"
+    command: bash -c "uvicorn titiler.xarray.main:app --host 0.0.0.0 --port 8083"
+    ports:
+      - "8083:8083"
+    image: docker.io/soutobias/titiler-xarray

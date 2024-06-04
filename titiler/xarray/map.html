@@ -5,6 +5,7 @@
         <title>TiTiler Map Viewer</title>
         <meta name='viewport'
             content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+        <!-- <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests"> -->
         <link rel="stylesheet"
             href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
@@ -105,8 +106,8 @@
                 const maxZoom = 18;
                 var map = L.map('map', {
                     crs: crs,
-                    minZoom: 0,
-                    maxZoom: maxZoom
+                    minZoom: 6,
+                    maxZoom: maxZoom,
                 });
 
                 if ("{{ tms.id }}" === "WebMercatorQuad") {
@@ -192,7 +193,7 @@
                     };
 
                     tileLayer.on('tileerror', handleTileError);
-                    map.setView([0, 0], 2);
+                    map.setView([54, 0], 6);
                 })
                 .catch(err => {
                     console.warn(err)

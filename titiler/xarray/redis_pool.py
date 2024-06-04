@@ -19,7 +19,7 @@ class RedisCache:
         """Get the redis connection pool."""
         if cls._instance is None:
             cls._instance = redis.ConnectionPool(
-                host=api_settings.cache_host, port=6379, db=0
+                host=api_settings.cache_host, port=6380, db=0
             )
         return cls._instance
 

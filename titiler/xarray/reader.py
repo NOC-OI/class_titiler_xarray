@@ -16,7 +16,7 @@ from rasterio.warp import transform_bounds
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.io.xarray import XarrayReader
 from rio_tiler.types import BBox
-
+import numpy as np
 from titiler.xarray.redis_pool import get_redis
 from titiler.xarray.settings import ApiSettings
 
@@ -156,23 +156,42 @@ def arrange_coordinates(da: xarray.DataArray) -> xarray.DataArray:
 def get_variable(
     ds: xarray.Dataset,
     variable: str,
-    datetime: Optional[str] = None,
+    date_time: Optional[str] = None,
     drop_dim: Optional[str] = None,
 ) -> xarray.DataArray:
     """Get Xarray variable as DataArray."""
     da = ds[variable]
+
     # if drop_dim:
         # dim_to_drop, dim_val = drop_dim.split("=")
         # da = da.sel({dim_to_drop: dim_val}).drop(dim_to_drop)
-    da = da.sel(time_counter = '1960-01-06T12:00:00')
-    da = da.drop_vars('time_counter', errors='ignore')
-    da = da.assign_coords(y=ds.nav_lat[:,0].fillna(0).values, x=ds.nav_lon[0].values)
-    da = da.sortby('x')
-    da = da.sortby('y')
-    # print(da.x.values)
+    # da = da.sel(time_counter = '1960-01-06T12:00:00')
+    if "time_counter" in da.dims:
+        if date_time:
+            time_as_str = date_time.split("T")[0]
+            if da["time_counter"].dtype == "O":
+                da["time_counter"] = da["time_counter"].astype("datetime64[ns]")
+            da = da.sel(
+                time_counter=numpy.array(time_as_str, dtype=numpy.datetime64), method="nearest"
+            )
+        else:
+            da = da.isel(time_counter=0)
+
+    da = da.drop_vars('nav_lat', errors='ignore')
+    da = da.drop_vars('nav_lon', errors='ignore')
+    da = da.drop_vars('projected_x', errors='ignore')
+    da = da.drop_vars('projected_y', errors='ignore')
+
+    da = da.assign_coords(y=ds.projected_y.fillna(0).values, x=ds.projected_x.fillna(0).values)
+    # da = da.assign_coords(y=ds.nav_lat[:,0].fillna(0).values, x=ds.nav_lon[0].values)
+    # da = da.sortby('x')
+    # da = da.sortby('y')
+
+
     # import numpy as np
-    # da.rio.set_nodata(np.nan, inplace=True)
+    # da.rio.set_nodata(0.0, inplace=True)
     # da = da.fillna('-9999')
+    da = da.where(da != 0.0, np.nan)
     da = arrange_coordinates(da)
     # # TODO: add test
     # if drop_dim:
@@ -191,16 +210,7 @@ def get_variable(
         # Sort the dataset by the updated longitude coordinates
         da = da.sortby(da.x)
 
-    if "time" in da.dims:
-        if datetime:
-            time_as_str = datetime.split("T")[0]
-            if da["time"].dtype == "O":
-                da["time"] = da["time"].astype("datetime64[ns]")
-            da = da.sel(
-                time=numpy.array(time_as_str, dtype=numpy.datetime64), method="nearest"
-            )
-        else:
-            da = da.isel(time=0)
+
 
     return da
 
@@ -217,9 +227,10 @@ class ZarrReader(XarrayReader):
     decode_times: bool = attr.ib(default=False)
     group: Optional[Any] = attr.ib(default=None)
     consolidated: Optional[bool] = attr.ib(default=True)
+    limits: Optional[Any] = attr.ib(default=None)
 
     # xarray.DataArray options
-    datetime: Optional[str] = attr.ib(default=None)
+    date_time: Optional[str] = attr.ib(default=None)
     drop_dim: Optional[str] = attr.ib(default=None)
 
     tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
@@ -250,9 +261,18 @@ class ZarrReader(XarrayReader):
         self.input = get_variable(
             self.ds,
             self.variable,
-            datetime=self.datetime,
+            date_time=self.date_time,
             drop_dim=self.drop_dim,
         )
+        print('limits', self.limits)
+        print('zzzzz', self.input)
+        # print('yyyyyyy', self.input.y)
+        print('xxxxxxx', self.input.rio.bounds())
+        self.bounds = self.input.rio.bounds()
+        if self.limits:
+            self.input = self.input.sel(y=slice(self.limits[0], self.limits[1]))
+            self.input = self.input.sel(x=slice(self.limits[2], self.limits[3]))
+            self.bounds = (self.limits[0], self.limits[2], self.limits[1], self.limits[3])
 
         # self.bounds = tuple(self.input.rio.bounds())
         self.crs = self.input.rio.crs
@@ -260,15 +280,18 @@ class ZarrReader(XarrayReader):
         #     [-179.5, -90, 179.5, 90], list(self.input.rio.bounds(recalc=True))
         # )
         # bounds = tuple([max(minx), max(miny), min(maxx), min(maxy)])
-        bounds = (-180, -90, 179.5, 90) # Example bounds, adjust as needed
+        # bounds = (self.limits[0], self.limits[2], self.limits[1], self.limits[3]) if self.limits else (-180, -90, 179.5, 90)
 
-        transformed_bounds = transform_bounds("EPSG:4326",
-                                              self.input.rio.crs,
-                                              *bounds,
-                                              densify_pts=21)
-        # print(transformed_bounds)
-        self.input = self.input.rio.clip_box(*transformed_bounds)
-        self.bounds = self.input.rio.bounds()
+        # # bounds = (-180, -90, 179.5, 90) # Example bounds, adjust as needed
+
+        # transformed_bounds = transform_bounds("EPSG:4326",
+        #                                       self.input.rio.crs,
+        #                                       *bounds,
+        #                                       densify_pts=21)
+        # # print(transformed_bounds)
+        # self.input = self.input.rio.clip_box(*transformed_bounds)
+        
+        print('bounds', self.bounds)
 
 
         self._dims = [

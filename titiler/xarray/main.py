@@ -7,7 +7,6 @@ import zarr
 from fastapi import Depends, FastAPI
 from starlette import status
 from starlette.middleware.cors import CORSMiddleware
-
 import titiler.xarray.reader as reader
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import AlgorithmFactory, TMSFactory

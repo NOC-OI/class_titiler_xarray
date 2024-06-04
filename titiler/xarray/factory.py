@@ -1,7 +1,7 @@
 """TiTiler.xarray factory."""
 
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional, Type
+from typing import Callable, Dict, List, Literal, Optional, Type, Tuple
 from urllib.parse import urlencode
 
 import jinja2
@@ -21,6 +21,37 @@ from titiler.core.resources.enums import ImageType
 from titiler.core.resources.responses import JSONResponse
 from titiler.core.utils import render_image
 from titiler.xarray.reader import ZarrReader
+
+from pydantic import BaseModel, Field
+
+# class LimitsModel(BaseModel):
+#     """ Limits Model.
+#     """
+#     min_lat: float = Field(..., description="Minimum latitude")
+#     max_lat: float = Field(..., description="Maximum latitude")
+#     min_lon: float = Field(..., description="Minimum longitude")
+#     max_lon: float = Field(..., description="Maximum longitude")
+#     timestamp: str = Field(..., description="Timestamp of the data")
+LimitsType = List[Tuple[float, ...]]
+
+def LimitsParams(
+    limits: Annotated[
+        Optional[List[str]],
+        Query(
+            title="Min/Max data latitude and longitude limits",
+            description="comma (',') delimited Min,Max range for latitude and longitude in format 'min_lat,max_lat,min_lon,max_lon'",
+            examples=["40,60,-10,10"],  # latitude  # longitude
+        ),
+    ] = None,
+) -> Optional[LimitsType]:
+    """Min/Max data Rescaling"""
+    if limits:
+        print(limits)
+        return tuple(map(float, limits[0].replace(" ", "").split(",")))
+
+    return None
+
+limit_dependency: Callable[..., Optional[LimitsType]] = LimitsParams
 
 
 @dataclass
@@ -132,8 +163,8 @@ class ZarrTilerFactory(BaseTilerFactory):
                 consolidated=consolidated,
             ) as src_dst:
                 info = src_dst.info().model_dump()
-                if show_times and "time" in src_dst.input.dims:
-                    times = [str(x.data) for x in src_dst.input.time]
+                if show_times and "time_counter" in src_dst.input.dims:
+                    times = [str(x.data) for x in src_dst.input.time_counter]
                     info["count"] = len(times)
                     info["times"] = times
 
@@ -214,14 +245,15 @@ class ZarrTilerFactory(BaseTilerFactory):
                 Optional[str],
                 Query(description="Dimension to drop"),
             ] = None,
-            # datetime: Annotated[
-            #     Optional[str], Query(description="Slice of time to read (if available)")
-            # ] = None,
+            date_time: Annotated[
+                Optional[str], Query(description="Slice of time to read (if available)")
+            ] = None,
             post_process=Depends(self.process_dependency),
             rescale=Depends(self.rescale_dependency),
             color_formula=Depends(ColorFormulaParams),
             colormap=Depends(self.colormap_dependency),
             render_params=Depends(self.render_dependency),
+            limits=Depends(limit_dependency),
             consolidated: Annotated[
                 Optional[bool],
                 Query(
@@ -229,6 +261,10 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
+            # limits: Annotated[
+            #     Optional[LimitsModel],
+            #     Query(description="Geographical limits and units")
+            # ] = None,
         ) -> Response:
             """Create map tile from a dataset."""
             tms = self.supported_tms.get(tileMatrixSetId)
@@ -239,11 +275,11 @@ class ZarrTilerFactory(BaseTilerFactory):
                 reference=reference,
                 decode_times=decode_times,
                 drop_dim=drop_dim,
-                # datetime=datetime,
+                date_time=date_time,
                 tms=tms,
                 consolidated=consolidated,
+                limits=limits,
             ) as src_dst:
-
                 image = src_dst.tile(
                     x, y, z, tilesize=scale * 256, nodata=src_dst.input.rio.nodata
                 )
@@ -313,7 +349,7 @@ class ZarrTilerFactory(BaseTilerFactory):
                 Optional[str],
                 Query(description="Dimension to drop"),
             ] = None,
-            datetime: Annotated[
+            date_time: Annotated[
                 Optional[str], Query(description="Slice of time to read (if available)")
             ] = None,
             tile_format: Annotated[
@@ -348,6 +384,7 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
+            limits=Depends(limit_dependency),
         ) -> Dict:
             """Return TileJSON document for a dataset."""
             route_params = {
@@ -376,7 +413,7 @@ class ZarrTilerFactory(BaseTilerFactory):
             ]
             if qs:
                 tiles_url += f"?{urlencode(qs)}"
-
+            # tiles_url = tiles_url.replace('http://', 'https://')
             tms = self.supported_tms.get(tileMatrixSetId)
 
             with self.reader(
@@ -387,6 +424,8 @@ class ZarrTilerFactory(BaseTilerFactory):
                 decode_times=decode_times,
                 tms=tms,
                 consolidated=consolidated,
+                date_time=date_time,
+                limits=limits,
             ) as src_dst:
                 # see https://github.com/corteva/rioxarray/issues/645
                 minx, miny, maxx, maxy = zip(
@@ -490,7 +529,7 @@ class ZarrTilerFactory(BaseTilerFactory):
                 Optional[str],
                 Query(description="Dimension to drop"),
             ] = None,
-            datetime: Annotated[
+            date_time: Annotated[
                 Optional[str], Query(description="Slice of time to read (if available)")
             ] = None,
             tile_format: Annotated[
@@ -513,6 +552,7 @@ class ZarrTilerFactory(BaseTilerFactory):
                 Optional[int],
                 Query(description="Overwrite default maxzoom."),
             ] = None,
+            limits=Depends(limit_dependency),
             post_process=Depends(self.process_dependency),
             rescale=Depends(self.rescale_dependency),
             color_formula=Depends(ColorFormulaParams),
