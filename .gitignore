@@ -108,3 +108,4 @@ cdk.out/
 node_modules
 cdk.context.json
 *.nc
+.vercel
