@@ -161,7 +161,7 @@ pydantic-settings==2.0.3
     # via titiler.xarray (pyproject.toml)
 pyparsing==3.1.2
     # via snuggs
-pyproj==3.5.0
+pyproj[PROJ]==3.5.0
     # via
     #   morecantile
     #   rioxarray
@@ -189,7 +189,7 @@ requests==2.32.3
     # via titiler.xarray (pyproject.toml)
 rio-tiler==6.6.1
     # via titiler-core
-    
+
 rioxarray==0.13.4
     # via titiler.xarray (pyproject.toml)
 s3fs==2024.6.0
