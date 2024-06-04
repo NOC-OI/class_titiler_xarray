@@ -13,6 +13,7 @@
     }
   ],
   "env": {
-    "APP_MODULE": "titiler.xarray.main:app"
+    "APP_MODULE": "titiler.xarray.main:app",
+    "PROJ_DIR": "/opt/homebrew/opt/proj" 
   }
 }
