@@ -13,7 +13,7 @@
   "functions": {
     "api/[[path]]": {
       "runtime": "custom",
-      "image": "docker.io/soutobias/titiler-xarray:latest"
+      "image": "docker.io/soutobias/titiler-xarray:latestdis"
     }
   }
 }
