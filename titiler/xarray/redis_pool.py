@@ -19,14 +19,16 @@ class RedisCache:
         """Get the redis connection pool."""
         if cls._instance is None:
             cls._instance = redis.ConnectionPool(
-                host=api_settings.cache_host, port=6380, db=0
+                host=api_settings.cache_host,
+                port=api_settings.cache_port,
+                db=0
             )
         return cls._instance
 
 
 def get_redis():
     """Get a redis connection."""
-    if not os.getenv("TEST_ENVIRONMENT"):
+    if os.getenv("TEST_ENVIRONMENT"):
         server = fakeredis.FakeServer()
         # Use fakeredis in a test environment
         return fakeredis.FakeRedis(server=server)
