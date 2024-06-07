@@ -12,7 +12,15 @@ WORKDIR /code/
 
 COPY . /code/
 
+RUN apt-get update -y && \
+    apt-get install -y cron nano gfortran build-essential cmake libaec-dev && \
+    apt-get install -y libgdal-dev gdal-bin && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+
 RUN pip install --upgrade pip
-RUN pip install -e . uvicorn
+RUN pip install -e .
+RUN pip install uvicorn
 EXPOSE 8083
 CMD ["uvicorn", "titiler.xarray.main:app", "--host", "0.0.0.0", "--port", "8083"]
