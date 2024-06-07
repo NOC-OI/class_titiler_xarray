@@ -241,6 +241,6 @@ zipp==3.19.1
     # via
     #   importlib-metadata
     #   importlib-resources
-
+python-dotenv==1.0.1
 # # The following packages are considered to be unsafe in a requirements file:
 # # setuptools
