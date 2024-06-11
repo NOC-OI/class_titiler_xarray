@@ -15,9 +15,9 @@ class ApiSettings(BaseSettings):
     debug: bool = False
 
     model_config = SettingsConfigDict(env_prefix="TITILER_XARRAY_", env_file=".env")
-    # cache_host: str = "127.0.0.1"
-    cache_host: str = "redis-cache"
-    cache_port: int = 6379
+    cache_host: str = "127.0.0.1"
+    # cache_host: str = "redis-cache"
+    cache_port: int = 6380
     enable_cache: bool = True
 
     @field_validator("cors_origins")

@@ -103,6 +103,87 @@ class ZarrTilerFactory(BaseTilerFactory):
                 url, group=group, reference=reference, consolidated=consolidated
             )
 
+
+        @self.router.get(
+            "/time_values",
+            response_class=JSONResponse,
+            responses={200: {"description": "Return dataset's Time values."}},
+        )
+        def time_values_endpoint(
+            url: Annotated[str, Query(description="Dataset URL")],
+            group: Annotated[
+                Optional[int],
+                Query(
+                    description="Select a specific zarr group from a zarr hierarchy. Could be associated with a zoom level or dataset."
+                ),
+            ] = None,
+            reference: Annotated[
+                Optional[bool],
+                Query(
+                    title="reference",
+                    description="Whether the dataset is a kerchunk reference",
+                ),
+            ] = False,
+            decode_times: Annotated[
+                Optional[bool],
+                Query(
+                    title="decode_times",
+                    description="Whether to decode times",
+                ),
+            ] = True,
+            consolidated: Annotated[
+                Optional[bool],
+                Query(
+                    title="consolidated",
+                    description="Whether to expect and open zarr store with consolidated metadata",
+                ),
+            ] = True,
+        ) -> List[str]:
+            """return time values of the dataset."""
+            return self.reader.list_time_values(
+                url, group=group, reference=reference, consolidated=consolidated
+            )
+
+        @self.router.get(
+            "/dimensions",
+            response_class=JSONResponse,
+            responses={200: {"description": "Return dataset's Time values."}},
+        )
+        def dimensions_endpoint(
+            url: Annotated[str, Query(description="Dataset URL")],
+            group: Annotated[
+                Optional[int],
+                Query(
+                    description="Select a specific zarr group from a zarr hierarchy. Could be associated with a zoom level or dataset."
+                ),
+            ] = None,
+            reference: Annotated[
+                Optional[bool],
+                Query(
+                    title="reference",
+                    description="Whether the dataset is a kerchunk reference",
+                ),
+            ] = False,
+            decode_times: Annotated[
+                Optional[bool],
+                Query(
+                    title="decode_times",
+                    description="Whether to decode times",
+                ),
+            ] = True,
+            consolidated: Annotated[
+                Optional[bool],
+                Query(
+                    title="consolidated",
+                    description="Whether to expect and open zarr store with consolidated metadata",
+                ),
+            ] = True,
+        ) -> List[str]:
+            """return time values of the dataset."""
+            return self.reader.list_dimensions(
+                url, group=group, reference=reference, consolidated=consolidated
+            )
+
         @self.router.get(
             "/info",
             response_model=Info,
@@ -151,7 +232,14 @@ class ZarrTilerFactory(BaseTilerFactory):
                     description="Whether to expect and open zarr store with consolidated metadata",
                 ),
             ] = True,
-        ) -> Info:
+            sel_date_time: Annotated[
+                Optional[bool],
+                Query(
+                    title="Sel Date Time",
+                    description="Sel Date Time",
+                ),
+            ] = True,
+            ) -> Info:
             """Return dataset's basic info."""
             with self.reader(
                 url,
@@ -161,10 +249,13 @@ class ZarrTilerFactory(BaseTilerFactory):
                 decode_times=decode_times,
                 drop_dim=drop_dim,
                 consolidated=consolidated,
+                sel_date_time=sel_date_time,
             ) as src_dst:
                 info = src_dst.info().model_dump()
+                print(src_dst.input.dims)
                 if show_times and "time_counter" in src_dst.input.dims:
                     times = [str(x.data) for x in src_dst.input.time_counter]
+                    # times = src_dst.input.time_counter
                     info["count"] = len(times)
                     info["times"] = times
 

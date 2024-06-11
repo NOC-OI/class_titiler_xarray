@@ -158,6 +158,7 @@ def get_variable(
     variable: str,
     date_time: Optional[str] = None,
     drop_dim: Optional[str] = None,
+    sel_date_time: Optional[bool] = True,
 ) -> xarray.DataArray:
     """Get Xarray variable as DataArray."""
     da = ds[variable]
@@ -166,16 +167,17 @@ def get_variable(
         # dim_to_drop, dim_val = drop_dim.split("=")
         # da = da.sel({dim_to_drop: dim_val}).drop(dim_to_drop)
     # da = da.sel(time_counter = '1960-01-06T12:00:00')
-    if "time_counter" in da.dims:
-        if date_time:
-            time_as_str = date_time.split("T")[0]
-            if da["time_counter"].dtype == "O":
-                da["time_counter"] = da["time_counter"].astype("datetime64[ns]")
-            da = da.sel(
-                time_counter=numpy.array(time_as_str, dtype=numpy.datetime64), method="nearest"
-            )
-        else:
-            da = da.isel(time_counter=0)
+    if sel_date_time:
+        if "time_counter" in da.dims:
+            if date_time:
+                time_as_str = date_time.split("T")[0]
+                if da["time_counter"].dtype == "O":
+                    da["time_counter"] = da["time_counter"].astype("datetime64[ns]")
+                da = da.sel(
+                    time_counter=numpy.array(time_as_str, dtype=numpy.datetime64), method="nearest"
+                )
+            else:
+                da = da.isel(time_counter=0)
 
     da = da.drop_vars('nav_lat', errors='ignore')
     da = da.drop_vars('nav_lon', errors='ignore')
@@ -235,7 +237,7 @@ class ZarrReader(XarrayReader):
 
     tms: TileMatrixSet = attr.ib(default=WEB_MERCATOR_TMS)
     geographic_crs: CRS = attr.ib(default=WGS84_CRS)
-
+    sel_date_time: Optional[bool] = attr.ib(default=True)
     ds: xarray.Dataset = attr.ib(init=False)
     input: xarray.DataArray = attr.ib(init=False)
 
@@ -263,11 +265,8 @@ class ZarrReader(XarrayReader):
             self.variable,
             date_time=self.date_time,
             drop_dim=self.drop_dim,
+            sel_date_time=self.sel_date_time,
         )
-        print('limits', self.limits)
-        print('zzzzz', self.input)
-        # print('yyyyyyy', self.input.y)
-        print('xxxxxxx', self.input.rio.bounds())
         self.bounds = self.input.rio.bounds()
         if self.limits:
             self.input = self.input.sel(y=slice(self.limits[0], self.limits[1]))
@@ -290,9 +289,6 @@ class ZarrReader(XarrayReader):
         #                                       densify_pts=21)
         # # print(transformed_bounds)
         # self.input = self.input.rio.clip_box(*transformed_bounds)
-        
-        print('bounds', self.bounds)
-
 
         self._dims = [
             d
@@ -307,7 +303,7 @@ class ZarrReader(XarrayReader):
         group: Optional[Any] = None,
         reference: Optional[bool] = False,
         consolidated: Optional[bool] = True,
-    ) -> List[str]:
+    ) -> List[Any]:
         """List available variable in a dataset."""
         with xarray_open_dataset(
             src_path,
@@ -316,3 +312,40 @@ class ZarrReader(XarrayReader):
             consolidated=consolidated,
         ) as ds:
             return list(ds.data_vars)  # type: ignore
+
+    @classmethod
+    def list_dimensions(
+        cls,
+        src_path: str,
+        group: Optional[Any] = None,
+        reference: Optional[bool] = False,
+        consolidated: Optional[bool] = True,
+    ) -> List[Any]:
+        """List available variable in a dataset."""
+        with xarray_open_dataset(
+            src_path,
+            group=group,
+            reference=reference,
+            consolidated=consolidated,
+        ) as ds:
+            return list(ds.sizes)  # type: ignore
+
+    @classmethod
+    def list_time_values(
+        cls,
+        src_path: str,
+        group: Optional[Any] = None,
+        reference: Optional[bool] = False,
+        consolidated: Optional[bool] = True,
+    ) -> List[str]:
+        """List available variable in a dataset."""
+        with xarray_open_dataset(
+            src_path,
+            group=group,
+            reference=reference,
+            consolidated=consolidated,
+        ) as ds:
+            if "time_counter" not in ds.dims:
+                return []
+            print(ds.time_counter.values.astype(str))
+            return list(ds.time_counter.values.astype(str))  # type: ignore
