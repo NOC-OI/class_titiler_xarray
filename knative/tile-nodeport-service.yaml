@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tile2-nodeport-service
+  namespace: default
+spec:
+  selector:
+    app: tile2-service-00003
+  ports:
+    - protocol: TCP
+      port: 8083        # Service port
+      targetPort: 8083  # Target port (Knative service port)
+      nodePort: 30083   # Node port (between 30000-32767)
+  type: NodePort
